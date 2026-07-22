@@ -166,6 +166,14 @@ impl ClientShellState {
                 self.move_copy_page(1, false, outcome);
                 return;
             }
+            KeyCode::Char('J') => {
+                self.move_copy_page(-1, false, outcome);
+                return;
+            }
+            KeyCode::Char('K') => {
+                self.move_copy_page(1, false, outcome);
+                return;
+            }
             KeyCode::Home => {
                 self.set_copy_cursor_col(0);
                 self.sync_copy_selection();
@@ -204,6 +212,8 @@ impl ClientShellState {
         };
         match command {
             'q' => self.exit_copy_mode(false, outcome),
+            'i' => self.exit_copy_mode(false, outcome),
+            'a' => self.exit_copy_mode(false, outcome),
             'y' => {
                 if !self.defer_copy_until_search_result() {
                     self.exit_copy_mode(true, outcome);
@@ -212,8 +222,8 @@ impl ClientShellState {
             'v' | ' ' => self.begin_copy_selection(false),
             'V' => self.begin_copy_selection(true),
             'h' => self.move_copy_cursor(0, -1, outcome),
-            'j' => self.move_copy_cursor(1, 0, outcome),
-            'k' => self.move_copy_cursor(-1, 0, outcome),
+            'k' => self.move_copy_cursor(1, 0, outcome),
+            'j' => self.move_copy_cursor(-1, 0, outcome),
             'l' => self.move_copy_cursor(0, 1, outcome),
             'g' => self.move_copy_history(true, outcome),
             'G' => self.move_copy_history(false, outcome),
@@ -222,8 +232,8 @@ impl ClientShellState {
                 self.sync_copy_selection();
                 outcome.repaint = true;
             }
-            '$' => self.request_copy_motion(crate::api::schema::PaneCopyMotion::LineEnd, outcome),
-            '^' => {
+            'L' => self.request_copy_motion(crate::api::schema::PaneCopyMotion::LineEnd, outcome),
+            'H' => {
                 self.request_copy_motion(crate::api::schema::PaneCopyMotion::FirstNonBlank, outcome)
             }
             '/' => self.open_copy_search(crate::api::schema::PaneCopySearchDirection::Forward),
