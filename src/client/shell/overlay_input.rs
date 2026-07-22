@@ -654,7 +654,7 @@ impl ClientShellState {
                 outcome.repaint = true;
                 return;
             }
-            if code == KeyCode::Enter {
+            if code == KeyCode::Enter || code == KeyCode::Tab && modifiers.is_empty() {
                 self.accept_navigator_selection(outcome);
                 return;
             }
@@ -683,6 +683,11 @@ impl ClientShellState {
                     outcome.repaint = true;
                     return;
                 }
+                return;
+            }
+            if code == KeyCode::Char('q') && modifiers.is_empty() {
+                self.overlay = None;
+                outcome.repaint = true;
                 return;
             }
             if matches!(code, KeyCode::Left | KeyCode::Right) && modifiers.is_empty() {
@@ -739,12 +744,12 @@ impl ClientShellState {
                 outcome.repaint = true;
                 return;
             }
-            if matches!(code, KeyCode::Down | KeyCode::Char('j')) && modifiers.is_empty() {
+            if matches!(code, KeyCode::Down | KeyCode::Char('k')) && modifiers.is_empty() {
                 self.move_navigator_selection(1);
                 outcome.repaint = true;
                 return;
             }
-            if matches!(code, KeyCode::Up | KeyCode::Char('k')) && modifiers.is_empty() {
+            if matches!(code, KeyCode::Up | KeyCode::Char('j')) && modifiers.is_empty() {
                 self.move_navigator_selection(-1);
                 outcome.repaint = true;
                 return;
@@ -845,27 +850,29 @@ impl ClientShellState {
 
             match code {
                 KeyCode::Esc | KeyCode::Enter => self.overlay = None,
-                KeyCode::Home => {
+                KeyCode::Home | KeyCode::Char('g') => {
                     if let Some(ClientShellOverlay::Help(help)) = self.overlay.as_mut() {
                         help.scroll = 0;
                     }
                 }
-                KeyCode::End => {
+                KeyCode::End | KeyCode::Char('G') => {
                     if let Some(ClientShellOverlay::Help(help)) = self.overlay.as_mut() {
                         help.scroll = self.hits.help_max_scroll;
                     }
                 }
                 KeyCode::Up
-                | KeyCode::Char('k')
-                | KeyCode::Down
                 | KeyCode::Char('j')
+                | KeyCode::Down
+                | KeyCode::Char('k')
                 | KeyCode::PageUp
-                | KeyCode::PageDown => {
+                | KeyCode::Char('J')
+                | KeyCode::PageDown
+                | KeyCode::Char('K') => {
                     let delta = match code {
-                        KeyCode::Up | KeyCode::Char('k') => -1,
-                        KeyCode::Down | KeyCode::Char('j') => 1,
-                        KeyCode::PageUp => -8,
-                        KeyCode::PageDown => 8,
+                        KeyCode::Up | KeyCode::Char('j') => -1,
+                        KeyCode::Down | KeyCode::Char('k') => 1,
+                        KeyCode::PageUp | KeyCode::Char('J') => -8,
+                        KeyCode::PageDown | KeyCode::Char('K') => 8,
                         _ => unreachable!(),
                     };
                     if let Some(ClientShellOverlay::Help(help)) = self.overlay.as_mut() {
