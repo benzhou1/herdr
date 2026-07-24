@@ -556,6 +556,14 @@ pub(super) const LEAVES: &[Leaf] = &[
         PaneFocusDirection
     ),
     leaf!(
+        "focus-id",
+        "Focus a pane by ID",
+        "cli:pane:focus-id",
+        Json,
+        PaneTargetProjection,
+        PaneFocus
+    ),
+    leaf!(
         "resize",
         "Resize a pane split",
         "cli:pane:resize",
