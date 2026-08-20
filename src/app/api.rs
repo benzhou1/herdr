@@ -349,6 +349,23 @@ impl App {
             } else {
                 None
             };
+        // Capture workspace info before state mutation so we can emit
+        // WorkspaceClosed when the last pane exits and auto-removes the workspace.
+        let auto_closed_workspace = if let AppEvent::PaneDied { pane_id, .. } = &ev {
+            self.find_pane(*pane_id).and_then(|(ws_idx, _)| {
+                let ws = &self.state.workspaces[ws_idx];
+                let is_last_pane = ws.tabs.iter().map(|t| t.layout.pane_count()).sum::<usize>() <= 1;
+                let is_last_tab = ws.tabs.len() <= 1;
+                if is_last_pane && is_last_tab {
+                    Some((self.public_workspace_id(ws_idx), self.workspace_info(ws_idx)))
+                } else {
+                    None
+                }
+            })
+        } else {
+            None
+        };
+
         let terminal_cwd_reported = matches!(ev, AppEvent::TerminalCwdReported { .. });
         let previous_toast = self.state.toast.clone();
         let mut pane_updates = self.state.handle_app_event(ev);
@@ -357,6 +374,16 @@ impl App {
         }
         if checkpointed_pane_exit {
             self.finish_checkpointed_pane_exit();
+        }
+        if let Some((workspace_id, workspace)) = auto_closed_workspace {
+            crate::logging::workspace_closed(&workspace_id);
+            self.emit_event(crate::api::schema::EventEnvelope {
+                event: crate::api::schema::EventKind::WorkspaceClosed,
+                data: crate::api::schema::EventData::WorkspaceClosed {
+                    workspace_id,
+                    workspace: Some(workspace),
+                },
+            });
         }
         if let Some(agents) = manifest_update_agents {
             self.reset_agent_detection_for_agents(&agents);
