@@ -570,8 +570,7 @@ impl ClientShellState {
                 let block = ratatui::widgets::Block::default()
                     .borders(ratatui::widgets::Borders::ALL)
                     .border_style(ratatui::style::Style::default().fg(self.config.palette.accent))
-                    .title(popup.title.clone())
-                    .style(ratatui::style::Style::default().bg(self.config.palette.panel_bg));
+                    .title(popup.title.clone());
                 ratatui::widgets::Widget::render(
                     ratatui::widgets::Clear,
                     geometry.outer,
