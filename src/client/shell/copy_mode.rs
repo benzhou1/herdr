@@ -839,6 +839,24 @@ impl ClientShellState {
                 ));
             }
         }
+        if copy
+            && !self
+                .selection
+                .as_ref()
+                .is_some_and(crate::selection::Selection::is_visible)
+        {
+            let end_col = self
+                .copy_hit()
+                .map_or(0, |hit| hit.inner_rect.width.saturating_sub(1));
+            if let Some(copy_mode) = self.copy_mode.as_ref() {
+                self.selection = Some(crate::selection::Selection::line_range(
+                    copy_mode.pane_id.clone(),
+                    copy_mode.cursor.row,
+                    copy_mode.cursor.row,
+                    end_col,
+                ));
+            }
+        }
         let Some(copy_mode) = self.copy_mode.take() else {
             return;
         };
