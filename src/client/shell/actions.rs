@@ -974,6 +974,35 @@ impl ClientShellState {
                 self.reveal_workspace(&workspace_id);
                 Some(Method::WorkspaceFocus(WorkspaceTarget { workspace_id }))
             }
+            KeybindAction::MoveWorkspaceUp | KeybindAction::MoveWorkspaceDown => {
+                let roots = snapshot
+                    .workspaces
+                    .iter()
+                    .filter(|workspace| {
+                        !workspace
+                            .worktree
+                            .as_ref()
+                            .is_some_and(|worktree| worktree.is_linked_worktree)
+                    })
+                    .map(|workspace| workspace.workspace_id.as_str())
+                    .collect::<Vec<_>>();
+                if roots.len() <= 1 {
+                    return None;
+                }
+                let source = roots.iter().position(|id| *id == focused_workspace)?;
+                let before = if action == KeybindAction::MoveWorkspaceDown {
+                    if source + 1 >= roots.len() {
+                        roots.first()
+                    } else {
+                        roots.get(source + 2)
+                    }
+                } else if source == 0 {
+                    None
+                } else {
+                    roots.get(source - 1)
+                };
+                self.workspace_move_method(&focused_workspace, before.copied())
+            }
             KeybindAction::SwitchTab(index) => {
                 let tabs = snapshot
                     .tabs

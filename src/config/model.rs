@@ -379,6 +379,10 @@ pub struct KeysConfig {
     pub previous_workspace: BindingConfig,
     /// Select the next workspace. Unset by default.
     pub next_workspace: BindingConfig,
+    /// Move the focused workspace one position up in the sidebar. Unset by default.
+    pub move_workspace_up: BindingConfig,
+    /// Move the focused workspace one position down in the sidebar. Unset by default.
+    pub move_workspace_down: BindingConfig,
     /// Focus the previous agent shown in the agent panel. Unset by default.
     pub previous_agent: BindingConfig,
     /// Focus the next agent shown in the agent panel. Unset by default.
@@ -521,6 +525,10 @@ pub(crate) struct KeysConfigOverlay {
     previous_workspace: Option<BindingConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     next_workspace: Option<BindingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    move_workspace_up: Option<BindingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    move_workspace_down: Option<BindingConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     previous_agent: Option<BindingConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -674,6 +682,8 @@ impl<'de> Deserialize<'de> for KeysConfig {
         apply_field!(open_notification_target);
         apply_field!(previous_workspace);
         apply_field!(next_workspace);
+        apply_field!(move_workspace_up);
+        apply_field!(move_workspace_down);
         apply_field!(previous_agent);
         apply_field!(next_agent);
         apply_field!(focus_agent);
@@ -781,6 +791,8 @@ impl KeysConfig {
         copy_effective_action_field!(open_notification_target, keybinds.open_notification_target);
         copy_effective_action_field!(previous_workspace, keybinds.previous_workspace);
         copy_effective_action_field!(next_workspace, keybinds.next_workspace);
+        copy_effective_action_field!(move_workspace_up, keybinds.move_workspace_up);
+        copy_effective_action_field!(move_workspace_down, keybinds.move_workspace_down);
         copy_effective_action_field!(previous_agent, keybinds.previous_agent);
         copy_effective_action_field!(next_agent, keybinds.next_agent);
         copy_effective_indexed_field!(focus_agent, keybinds.focus_agent);
@@ -1155,6 +1167,8 @@ impl Default for KeysConfig {
             open_notification_target: BindingConfig::one("prefix+o"),
             previous_workspace: BindingConfig::empty(),
             next_workspace: BindingConfig::empty(),
+            move_workspace_up: BindingConfig::empty(),
+            move_workspace_down: BindingConfig::empty(),
             previous_agent: BindingConfig::empty(),
             next_agent: BindingConfig::empty(),
             focus_agent: BindingConfig::empty(),

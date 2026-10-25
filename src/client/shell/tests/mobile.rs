@@ -594,6 +594,43 @@ fn mobile_previous_workspace_action_wraps_across_expanded_entries() {
 }
 
 #[test]
+fn move_workspace_actions_reorder_focused_workspace_and_wrap() {
+    let mut projected = snapshot();
+    for index in 2..=3 {
+        let mut workspace = projected.workspaces[0].clone();
+        workspace.workspace_id = format!("ws_{index}");
+        workspace.number = index;
+        workspace.focused = false;
+        projected.workspaces.push(workspace);
+    }
+    let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
+    state.set_snapshot(Box::new(projected));
+    state.set_pane_surface(surface());
+    state.compose(120, 30).expect("desktop layout");
+
+    for (action, expected_insert_index) in [
+        (crate::input::KeybindAction::MoveWorkspaceDown, 2),
+        (crate::input::KeybindAction::MoveWorkspaceUp, 3),
+    ] {
+        let mut outcome = ClientShellInput::default();
+        state.record_binding(crate::input::KeybindMatch::Action(action), &mut outcome);
+        assert!(
+            outcome.actions.iter().any(|action| matches!(
+                action,
+                ClientShellAction::Endpoint { request, .. }
+                    if matches!(
+                        &request.method,
+                        crate::api::schema::Method::WorkspaceMove(params)
+                            if params.workspace_id == "ws_1"
+                                && params.insert_index == expected_insert_index
+                    )
+            )),
+            "unexpected actions for {action:?}"
+        );
+    }
+}
+
+#[test]
 fn mobile_switcher_scroll_close_and_width_transition_clear_mobile_hits() {
     let mut state = ClientShellState::new(ClientShellConfig::from_config(&Config::default()));
     let mut projected = snapshot();

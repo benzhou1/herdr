@@ -614,6 +614,18 @@
           "description": "Select the next workspace. Unset by default."
         },
         {
+          "key": "keys.move_workspace_up",
+          "type": "keybinding",
+          "default": "unset",
+          "description": "Move the focused workspace one position up in the sidebar, wrapping to the bottom. Unset by default."
+        },
+        {
+          "key": "keys.move_workspace_down",
+          "type": "keybinding",
+          "default": "unset",
+          "description": "Move the focused workspace one position down in the sidebar, wrapping to the top. Unset by default."
+        },
+        {
           "key": "keys.previous_agent",
           "type": "keybinding",
           "default": "unset",
