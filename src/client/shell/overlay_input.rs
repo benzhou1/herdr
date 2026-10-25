@@ -203,6 +203,7 @@ impl ClientShellState {
             selected: None,
             scroll: 0,
             filter: None,
+            switcher: None,
         };
         let rows =
             render::client_navigator_rows(&self.endpoints, &self.active_endpoint_id, &navigator);

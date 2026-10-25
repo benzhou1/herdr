@@ -367,6 +367,7 @@ pub(super) struct ClientNavigatorOverlay {
     pub(super) selected: Option<ClientNavigatorTarget>,
     pub(super) scroll: usize,
     pub(super) filter: Option<ClientNavigatorFilter>,
+    pub(super) switcher: Option<super::pane_switcher::PaneSwitcherSession>,
 }
 
 #[derive(Debug)]
@@ -905,6 +906,7 @@ pub(crate) struct ClientShellState {
     pub(super) reveal_navigation_workspace: bool,
     pub(super) overlay: Option<ClientShellOverlay>,
     pub(super) previous_pane_id: Option<String>,
+    pub(super) pane_mru: Vec<ClientNavigatorTarget>,
     pub(super) pane_mouse_gesture: Option<ClientPaneMouseGesture>,
     pub(super) link_hover: Option<super::link_hover::LinkHover>,
     pub(super) url_click_consumes_until_up: bool,
@@ -1079,6 +1081,7 @@ impl ClientShellState {
             reveal_navigation_workspace: false,
             overlay,
             previous_pane_id: None,
+            pane_mru: Vec::new(),
             pane_mouse_gesture: None,
             link_hover: None,
             url_click_consumes_until_up: false,
@@ -1393,6 +1396,7 @@ impl ClientShellState {
         {
             self.previous_pane_id = Some(previous.clone());
         }
+        self.note_pane_focus(snapshot.focused_pane_id.as_deref());
         if snapshot_keybindings_changed {
             if let Err(err) = self.config.apply_snapshot_keybindings(
                 snapshot.server_keybindings_toml.as_deref(),

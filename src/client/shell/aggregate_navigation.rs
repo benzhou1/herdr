@@ -461,7 +461,10 @@ pub(super) fn navigator_rows(
             rows.extend(endpoint_rows);
         }
     }
-    rows
+    match &navigator.switcher {
+        Some(switcher) => switcher.order_rows(rows),
+        None => rows,
+    }
 }
 
 pub(super) fn navigator_selected_index(

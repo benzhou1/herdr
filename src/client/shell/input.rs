@@ -95,7 +95,7 @@ impl ClientShellState {
         matches!(
             self.mode,
             ClientShellMode::Prefix | ClientShellMode::Navigate
-        )
+        ) || self.pane_switcher_holding()
     }
 
     pub(crate) fn set_host_reports_key_releases(&mut self, reports: bool) {
@@ -328,6 +328,7 @@ impl ClientShellState {
                     outcome.repaint |= self.clear_link_hover();
                     self.outer_focused = Some(false);
                     self.release_input_leases(&mut outcome);
+                    outcome.repaint |= self.cancel_pane_switcher_hold();
                     outcome
                         .requests
                         .push(ClientMessage::ClientShellFocus { focused: false });
@@ -383,6 +384,9 @@ impl ClientShellState {
         outcome.repaint |= self.clear_link_hover();
         if self.copy_operation_in_flight {
             self.copy_input_queue.push_back(key);
+            return;
+        }
+        if self.handle_pane_switcher_key(&key, outcome) {
             return;
         }
         let key = if self.host_reports_key_releases && key.generated_text.is_some() {

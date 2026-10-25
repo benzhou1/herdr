@@ -842,6 +842,18 @@
           "description": "Toggle sidebar collapse."
         },
         {
+          "key": "keys.pane_switcher",
+          "type": "keybinding",
+          "default": "\"ctrl+tab\"",
+          "description": "Open the pane switcher in most-recently-used order. Hold the modifier and repeat the key to cycle, release it to switch, press Ctrl+/ to search instead. Needs a terminal that reports key releases (Kitty keyboard protocol); elsewhere press Enter to switch."
+        },
+        {
+          "key": "keys.pane_switcher_previous",
+          "type": "keybinding",
+          "default": "\"ctrl+shift+tab\"",
+          "description": "Open the pane switcher stepping backwards, or step an open switcher back."
+        },
+        {
           "key": "keys.indexed.tabs",
           "type": "string",
           "default": "unset",

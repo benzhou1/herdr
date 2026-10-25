@@ -861,7 +861,7 @@ fn render_navigator_overlay(
                 .bg(p.panel_bg)
         };
         let is_pane = matches!(r.target, ClientNavigatorTarget::Pane { .. });
-        let connector = if !is_pane {
+        let connector = if !is_pane || n.switcher.is_some() {
             ""
         } else if rows
             .get(ix + 1)
@@ -903,6 +903,19 @@ fn render_navigator_overlay(
             &label,
             st,
         );
+        if n.switcher.is_some() {
+            if let Some(workspace) = super::pane_switcher::row_workspace(r) {
+                let offset = display_width(&format!("{indent}{current}{status}{status_separator}"));
+                put_text(
+                    b,
+                    rect.x.saturating_add(offset),
+                    rect.y,
+                    rect.width.saturating_sub(columns).saturating_sub(offset),
+                    workspace,
+                    st.add_modifier(Modifier::BOLD),
+                );
+            }
+        }
         if is_pane {
             put_text(
                 b,
@@ -1026,7 +1039,9 @@ fn render_navigator_overlay(
         i.x,
         i.bottom() - 1,
         i.width,
-        if n.search_focused {
+        if n.switcher.as_ref().is_some_and(|s| s.holding()) {
+            " tab next · shift+tab previous · ctrl+/ search · release ctrl to switch · esc cancel"
+        } else if n.search_focused {
             " search type · move ↑↓/ctrl+n/p · open enter · back esc"
         } else {
             " ↑↓/j/k rows · ←→ workspace · / search · a/b/w/i/d filter · enter open · esc close"

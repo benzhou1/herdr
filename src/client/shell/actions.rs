@@ -48,6 +48,17 @@ impl ClientShellState {
                     outcome.repaint = true;
                     return;
                 }
+                if matches!(
+                    action,
+                    crate::input::KeybindAction::PaneSwitcher
+                        | crate::input::KeybindAction::PaneSwitcherPrevious
+                ) {
+                    self.step_pane_switcher(
+                        action == crate::input::KeybindAction::PaneSwitcherPrevious,
+                        outcome,
+                    );
+                    return;
+                }
                 if action == crate::input::KeybindAction::Help {
                     self.overlay = Some(ClientShellOverlay::Help(ClientHelpOverlay {
                         query: TextEditor::default(),

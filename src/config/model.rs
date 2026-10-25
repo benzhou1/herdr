@@ -455,6 +455,11 @@ pub struct KeysConfig {
     pub resize_pane_right: BindingConfig,
     /// Toggle sidebar collapse. Default: "prefix+b"
     pub toggle_sidebar: BindingConfig,
+    /// Open the most-recently-used pane switcher; hold the modifier and repeat
+    /// the key to cycle, release to switch. Default: "ctrl+tab"
+    pub pane_switcher: BindingConfig,
+    /// Open the pane switcher stepping backwards. Default: "ctrl+shift+tab"
+    pub pane_switcher_previous: BindingConfig,
     /// Optional indexed shortcuts expanded over number keys 1-9.
     pub indexed: IndexedKeysConfig,
     /// Prefix-mode custom command bindings.
@@ -592,6 +597,10 @@ pub(crate) struct KeysConfigOverlay {
     #[serde(skip_serializing_if = "Option::is_none")]
     toggle_sidebar: Option<BindingConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pane_switcher: Option<BindingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pane_switcher_previous: Option<BindingConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     indexed: Option<IndexedKeysConfig>,
     #[serde(skip_serializing)]
     command: Option<Vec<CommandKeybindConfig>>,
@@ -703,6 +712,8 @@ impl<'de> Deserialize<'de> for KeysConfig {
         apply_field!(resize_pane_up);
         apply_field!(resize_pane_right);
         apply_field!(toggle_sidebar);
+        apply_field!(pane_switcher);
+        apply_field!(pane_switcher_previous);
         apply_field!(indexed);
         apply_field!(command);
 
@@ -808,6 +819,8 @@ impl KeysConfig {
         copy_effective_action_field!(resize_pane_up, keybinds.resize_pane_up);
         copy_effective_action_field!(resize_pane_right, keybinds.resize_pane_right);
         copy_effective_action_field!(toggle_sidebar, keybinds.toggle_sidebar);
+        copy_effective_action_field!(pane_switcher, keybinds.pane_switcher);
+        copy_effective_action_field!(pane_switcher_previous, keybinds.pane_switcher_previous);
         copy_user_field!(indexed);
 
         profile
@@ -1180,6 +1193,8 @@ impl Default for KeysConfig {
             resize_pane_up: BindingConfig::empty(),
             resize_pane_right: BindingConfig::empty(),
             toggle_sidebar: BindingConfig::one("prefix+b"),
+            pane_switcher: BindingConfig::one("ctrl+tab"),
+            pane_switcher_previous: BindingConfig::one("ctrl+shift+tab"),
             indexed: IndexedKeysConfig::default(),
             command: Vec::new(),
             user_fields: BTreeSet::new(),
