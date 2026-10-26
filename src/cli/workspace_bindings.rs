@@ -4,7 +4,7 @@ use clap::{Arg, ArgMatches, Command};
 
 use crate::api::schema::workspaces::{
     WorkspaceCloseProjection, WorkspaceCreateProjection, WorkspaceMetadataProjection,
-    WorkspaceRenameProjection,
+    WorkspaceMoveBlockParams, WorkspaceRenameProjection,
 };
 use crate::api::schema::{EmptyParams, Method, Request, WorkspaceTarget};
 
@@ -17,6 +17,28 @@ pub(crate) fn workspace_id() -> Input<String> {
         *slot = super::normalize_workspace_id(value);
         Ok(())
     })
+}
+
+pub(crate) fn workspace_ids() -> Input<Vec<String>> {
+    Input::positional("workspace_id", 0, |slot: &mut Vec<String>, value| {
+        slot.push(super::normalize_workspace_id(value));
+        Ok(())
+    })
+    .value_name("WORKSPACE_ID")
+    // Hyphen values stay off so `--index` after the ids is read as the flag.
+    .configure(|arg| arg.num_args(1..).allow_hyphen_values(false))
+}
+
+/// `None` is `-1`: move to the end.
+pub(crate) fn index() -> Input<Option<usize>> {
+    Input::value("index", "N", |slot, value| {
+        *slot = match value {
+            "-1" => None,
+            _ => Some(super::parse_usize_flag("--index", value)?),
+        };
+        Ok(())
+    })
+    .required()
 }
 
 pub(crate) fn label() -> Input<String> {
@@ -200,6 +222,70 @@ pub(crate) fn command() -> Command {
     Command::new("workspace")
         .about("Manage workspaces over the socket API")
         .subcommands(LEAVES.iter().map(Leaf::command))
+        .subcommand(move_command())
+}
+
+/// `workspace move` has no single socket method: `workspace.move_block` takes
+/// an anchor rather than an index, so it is not a `Leaf`.
+pub(crate) struct WorkspaceMoveArgs {
+    workspace_ids: Vec<String>,
+    index: Option<usize>,
+}
+
+cli_projection! {
+    pub(crate) WorkspaceMoveProjection for WorkspaceMoveArgs {
+        workspace_ids => Field::new(Vec::new()).input(workspace_ids()),
+        index => Field::new(None).input(index()),
+    }
+}
+
+fn move_command() -> Command {
+    super::projection::command("move", WorkspaceMoveProjection::arguments())
+        .about("Move workspaces so the first one lands at an index")
+}
+
+pub(crate) fn parse_move(args: &[String]) -> Result<WorkspaceMoveArgs, ParseError> {
+    super::projection::parse(
+        move_command().bin_name("herdr workspace move"),
+        args,
+        WorkspaceMoveProjection::from_matches,
+    )
+}
+
+/// Mirrors the server's workspace id lookup: exact id, `w_N`, then 1-based `N`.
+fn workspace_position(list: &[String], id: &str) -> Option<usize> {
+    list.iter()
+        .position(|candidate| candidate == id)
+        .or_else(|| id.strip_prefix("w_")?.parse::<usize>().ok()?.checked_sub(1))
+        .or_else(|| id.parse::<usize>().ok()?.checked_sub(1))
+        .filter(|&position| position < list.len())
+}
+
+/// Places the workspaces before whichever other workspace currently sits at
+/// `index`, so the first one ends up at `index`; no index means the end. `list`
+/// is the current ordered workspace ids.
+pub(crate) fn move_method(list: &[String], args: WorkspaceMoveArgs) -> Result<Method, ParseError> {
+    // Unknown ids are left for the server to reject with its usual error.
+    let moved: Vec<String> = args
+        .workspace_ids
+        .iter()
+        .map(|id| workspace_position(list, id).map_or_else(|| id.clone(), |at| list[at].clone()))
+        .collect();
+    let others: Vec<&String> = list.iter().filter(|id| !moved.contains(id)).collect();
+    let before_workspace_id = match args.index {
+        None => None,
+        Some(index) if index > others.len() => {
+            return Err(ParseError::Usage(format!(
+                "--index {index} is out of bounds (max {})",
+                others.len()
+            )));
+        }
+        Some(index) => others.get(index).map(|id| (*id).clone()),
+    };
+    Ok(Method::WorkspaceMoveBlock(WorkspaceMoveBlockParams {
+        workspace_ids: moved,
+        before_workspace_id,
+    }))
 }
 
 #[cfg(test)]
@@ -342,6 +428,92 @@ mod tests {
         );
         assert!(
             matches!(request("create", &["--env", "=value"]), Err(ParseError::Usage(message)) if message == "env key must not be empty")
+        );
+    }
+
+    fn parse(args: &[&str]) -> Result<WorkspaceMoveArgs, ParseError> {
+        parse_move(&args.iter().map(|arg| (*arg).to_owned()).collect::<Vec<_>>())
+    }
+
+    fn move_params(list: &[&str], args: &[&str]) -> Result<serde_json::Value, ParseError> {
+        let list: Vec<String> = list.iter().map(|id| (*id).to_owned()).collect();
+        let method = move_method(&list, parse(args)?)?;
+        let request = Request {
+            id: "cli:workspace:move".into(),
+            method,
+        };
+        let mut request = serde_json::to_value(request).unwrap();
+        assert_eq!(request["method"], "workspace.move_block");
+        Ok(request["params"].take())
+    }
+
+    #[test]
+    fn workspace_move_parses_ids_and_required_index() {
+        for (args, ids, index) in [
+            (&["a", "--index", "2"][..], &["a"][..], Some(2)),
+            (&["a", "b", "--index=0"][..], &["a", "b"][..], Some(0)),
+            (&["--index", "1", "a", "b"][..], &["a", "b"][..], Some(1)),
+            (&["a", "--index", "-1"][..], &["a"][..], None),
+            (&["a", "b", "--index=-1"][..], &["a", "b"][..], None),
+        ] {
+            let parsed = parse(args).unwrap();
+            assert_eq!(parsed.workspace_ids, ids);
+            assert_eq!(parsed.index, index);
+        }
+        assert!(
+            matches!(parse(&["a"]), Err(ParseError::Clap(error)) if error.kind() == clap::error::ErrorKind::MissingRequiredArgument)
+        );
+        assert!(
+            matches!(parse(&["--index", "1"]), Err(ParseError::Clap(error)) if error.kind() == clap::error::ErrorKind::MissingRequiredArgument)
+        );
+        assert!(
+            matches!(parse(&["a", "--index", "x"]), Err(ParseError::Io(error)) if error.to_string() == "invalid value for --index: x")
+        );
+        assert!(
+            matches!(parse(&["a", "--index", "-2"]), Err(ParseError::Io(error)) if error.to_string() == "invalid value for --index: -2")
+        );
+        command().debug_assert();
+        assert!(command().find_subcommand("move").is_some());
+    }
+
+    #[test]
+    fn workspace_move_places_the_first_id_at_the_index() {
+        let list = ["A", "B", "C", "D"];
+        assert_eq!(
+            move_params(&list, &["D", "B", "--index", "0"]).unwrap(),
+            serde_json::json!({"workspace_ids": ["D", "B"], "before_workspace_id": "A"})
+        );
+        assert_eq!(
+            move_params(&list, &["A", "--index", "2"]).unwrap(),
+            serde_json::json!({"workspace_ids": ["A"], "before_workspace_id": "D"})
+        );
+        for index in ["3", "-1"] {
+            assert_eq!(
+                move_params(&list, &["A", "--index", index]).unwrap(),
+                serde_json::json!({"workspace_ids": ["A"]})
+            );
+        }
+        assert_eq!(
+            move_params(&list, &["B", "A", "--index", "-1"]).unwrap(),
+            serde_json::json!({"workspace_ids": ["B", "A"]})
+        );
+        assert!(
+            matches!(move_params(&list, &["A", "--index", "4"]), Err(ParseError::Usage(message)) if message == "--index 4 is out of bounds (max 3)")
+        );
+    }
+
+    #[test]
+    fn workspace_move_resolves_server_aliases_and_defers_unknown_ids() {
+        let list = ["alpha", "beta", "gamma"];
+        for alias in ["3", "w_3"] {
+            assert_eq!(
+                move_params(&list, &[alias, "--index", "0"]).unwrap(),
+                serde_json::json!({"workspace_ids": ["gamma"], "before_workspace_id": "alpha"})
+            );
+        }
+        assert_eq!(
+            move_params(&list, &["nope", "--index", "0"]).unwrap(),
+            serde_json::json!({"workspace_ids": ["nope"], "before_workspace_id": "alpha"})
         );
     }
 }

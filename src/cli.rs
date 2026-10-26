@@ -889,6 +889,12 @@ pub(super) fn parse_u64_flag(flag: &str, value: &str) -> std::io::Result<u64> {
         .map_err(|_| std::io::Error::other(format!("invalid value for {flag}: {value}")))
 }
 
+pub(super) fn parse_usize_flag(flag: &str, value: &str) -> std::io::Result<usize> {
+    value
+        .parse::<usize>()
+        .map_err(|_| std::io::Error::other(format!("invalid value for {flag}: {value}")))
+}
+
 /// Expand `--flag=value` tokens into separate `--flag` and `value` tokens so
 /// the hand-rolled subcommand parsers accept the same `--flag=value` form the
 /// clap-generated help and completions imply. Only `value_options` are split:
